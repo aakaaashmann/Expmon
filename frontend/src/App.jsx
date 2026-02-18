@@ -1,35 +1,172 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import api from "./services/api";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [expenses, setExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [form, setForm] = useState({
+    amount: "",
+    category: "",
+    description: "",
+    date: "",
+  });
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [expenses, categoryFilter]);
+
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/expenses?sort=date_desc");
+      setExpenses(res.data);
+    } catch (err) {
+      setError("Failed to fetch expenses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let data = [...expenses];
+    if (categoryFilter) {
+      data = data.filter((e) => e.category === categoryFilter);
+    }
+    setFilteredExpenses(data);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!form.amount || !form.category || !form.date) {
+      setError("Please fill required fields");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await api.post("/expenses", form, {
+        headers: {
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+      });
+
+      setForm({
+        amount: "",
+        category: "",
+        description: "",
+        date: "",
+      });
+
+      fetchExpenses();
+    } catch (err) {
+      setError("Failed to add expense");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const total = filteredExpenses.reduce(
+    (sum, e) => sum + parseFloat(e.amount),
+    0
+  );
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    <div style={{ maxWidth: 800, margin: "40px auto", fontFamily: "Arial" }}>
+      <h2>Expense Tracker</h2>
+
+      <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
+        <input
+          type="number"
+          placeholder="Amount"
+          value={form.amount}
+          onChange={(e) =>
+            setForm({ ...form, amount: e.target.value })
+          }
+          required
+        />
+        <input
+          type="text"
+          placeholder="Category"
+          value={form.category}
+          onChange={(e) =>
+            setForm({ ...form, category: e.target.value })
+          }
+          required
+        />
+        <input
+          type="text"
+          placeholder="Description"
+          value={form.description}
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
+        />
+        <input
+          type="date"
+          value={form.date}
+          onChange={(e) =>
+            setForm({ ...form, date: e.target.value })
+          }
+          required
+        />
+        <button disabled={loading}>
+          {loading ? "Adding..." : "Add Expense"}
         </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
+      </form>
+
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Filter by category"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        />
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <>
+          <table border="1" cellPadding="8" width="100%">
+            <thead>
+              <tr>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredExpenses.map((expense) => (
+                <tr key={expense.id}>
+                  <td>₹{expense.amount}</td>
+                  <td>{expense.category}</td>
+                  <td>{expense.description}</td>
+                  <td>{expense.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 style={{ marginTop: 20 }}>
+            Total: ₹{total.toFixed(2)}
+          </h3>
+        </>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;
