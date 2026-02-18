@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "./services/api";
 
+
 function App() {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
@@ -12,14 +13,17 @@ function App() {
     date: "",
   });
 
+  // Filter
   const [categoryFilter, setCategoryFilter] = useState("");
 
   // Separate loading states
   const [submitting, setSubmitting] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
 
+  // Error
   const [error, setError] = useState("");
 
+  // FETCH
   useEffect(() => {
     fetchExpenses();
   }, []);
@@ -28,6 +32,7 @@ function App() {
     applyFilters();
   }, [expenses, categoryFilter]);
 
+  // LIST
   const fetchExpenses = async () => {
     try {
       setLoadingList(true);
@@ -40,6 +45,7 @@ function App() {
     }
   };
 
+  // FILTER
   const applyFilters = () => {
     let data = [...expenses];
 
@@ -54,6 +60,7 @@ function App() {
     setFilteredExpenses(data);
   };
 
+  // FORM
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -69,6 +76,7 @@ function App() {
       return;
     }
 
+    // Prevent duplicates
     try {
       setSubmitting(true);
 
@@ -93,6 +101,7 @@ function App() {
         date: "",
       });
 
+      // Refresh list
       fetchExpenses();
     } catch (err) {
       setError("Failed to add expense");
@@ -101,11 +110,13 @@ function App() {
     }
   };
 
+  // Calculate total
   const total = filteredExpenses.reduce(
     (sum, expense) => sum + parseFloat(expense.amount),
     0
   );
 
+  // UI
   return (
     <div style={{ maxWidth: 800, margin: "40px auto", fontFamily: "Arial" }}>
       <h2>Expense Tracker</h2>
