@@ -2,8 +2,8 @@
 
 ## Live Application
 
-Frontend: (Add Vercel link here)  
-Backend API: (Add Render link here)
+Frontend: ( https://expmon-frontend-dwfcugbwd-aakaaashmanns-projects.vercel.app )  
+Backend API: ( https://expmon-backend.onrender.com )
 
 ---
 
