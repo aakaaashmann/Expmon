@@ -4,14 +4,20 @@ import api from "./services/api";
 function App() {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
+
   const [form, setForm] = useState({
     amount: "",
     category: "",
     description: "",
     date: "",
   });
+
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  // Separate loading states
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -24,21 +30,27 @@ function App() {
 
   const fetchExpenses = async () => {
     try {
-      setLoading(true);
+      setLoadingList(true);
       const res = await api.get("/expenses?sort=date_desc");
       setExpenses(res.data);
     } catch (err) {
       setError("Failed to fetch expenses");
     } finally {
-      setLoading(false);
+      setLoadingList(false);
     }
   };
 
   const applyFilters = () => {
     let data = [...expenses];
+
     if (categoryFilter) {
-      data = data.filter((e) => e.category === categoryFilter);
+      data = data.filter(
+        (expense) =>
+          expense.category.toLowerCase() ===
+          categoryFilter.toLowerCase()
+      );
     }
+
     setFilteredExpenses(data);
   };
 
@@ -51,15 +63,29 @@ function App() {
       return;
     }
 
+    // Prevent negative or zero amounts
+    if (parseFloat(form.amount) <= 0) {
+      setError("Amount must be greater than 0");
+      return;
+    }
+
     try {
-      setLoading(true);
+      setSubmitting(true);
 
-      await api.post("/expenses", form, {
-        headers: {
-          "Idempotency-Key": crypto.randomUUID(),
+      await api.post(
+        "/expenses",
+        {
+          ...form,
+          amount: parseFloat(form.amount),
         },
-      });
+        {
+          headers: {
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+        }
+      );
 
+      // Reset form
       setForm({
         amount: "",
         category: "",
@@ -71,12 +97,12 @@ function App() {
     } catch (err) {
       setError("Failed to add expense");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   const total = filteredExpenses.reduce(
-    (sum, e) => sum + parseFloat(e.amount),
+    (sum, expense) => sum + parseFloat(expense.amount),
     0
   );
 
@@ -84,6 +110,7 @@ function App() {
     <div style={{ maxWidth: 800, margin: "40px auto", fontFamily: "Arial" }}>
       <h2>Expense Tracker</h2>
 
+      {/* FORM */}
       <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
         <input
           type="number"
@@ -94,6 +121,7 @@ function App() {
           }
           required
         />
+
         <input
           type="text"
           placeholder="Category"
@@ -103,6 +131,7 @@ function App() {
           }
           required
         />
+
         <input
           type="text"
           placeholder="Description"
@@ -111,6 +140,7 @@ function App() {
             setForm({ ...form, description: e.target.value })
           }
         />
+
         <input
           type="date"
           value={form.date}
@@ -119,13 +149,15 @@ function App() {
           }
           required
         />
-        <button disabled={loading}>
-          {loading ? "Adding..." : "Add Expense"}
+
+        <button disabled={submitting}>
+          {submitting ? "Adding..." : "Add Expense"}
         </button>
       </form>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
+      {/* FILTER */}
       <div style={{ marginBottom: 20 }}>
         <input
           type="text"
@@ -135,7 +167,8 @@ function App() {
         />
       </div>
 
-      {loading ? (
+      {/* LIST */}
+      {loadingList ? (
         <p>Loading...</p>
       ) : (
         <>
